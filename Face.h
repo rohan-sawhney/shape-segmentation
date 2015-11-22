@@ -2,7 +2,6 @@
 #define FACE_H
 
 #include "Types.h"
-#include <vector>
 class BoundingBox;
 
 class Face {
