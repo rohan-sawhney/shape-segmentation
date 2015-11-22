@@ -38,7 +38,7 @@ void printInstructions()
 void generateClusterColors()
 {
     colors.clear();
-    for (int i = 0; i < 360; i += 360 / clusters) {
+    for (int i = 0; i < 10; i++) {
         Eigen::Vector3d c;
         c.x() = (double)rand() / RAND_MAX;
         c.y() = (double)rand() / RAND_MAX;
@@ -122,8 +122,10 @@ void keyboard(unsigned char key, int x0, int y0)
         case ' ':
             if (success) {
                 mesh.segment(clusters);
-                generateClusterColors();
             }
+            break;
+        case 'n':
+            generateClusterColors();
             break;
     }
     
@@ -143,7 +145,7 @@ void special(int i, int x0, int y0)
             if (clusters > 1) clusters--;
             break;
         case GLUT_KEY_RIGHT:
-            clusters++;
+            if (clusters < 10) clusters++;
             break;
     }
     

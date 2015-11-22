@@ -2,6 +2,10 @@
 #include "MeshIO.h"
 #include "Bvh.h"
 #include <algorithm>
+#define EPSILON 1e-6
+
+double minSDF = INFINITY;
+double maxSDF = -INFINITY;
 
 Mesh::Mesh()
 {
@@ -112,8 +116,6 @@ void computeSDFValues(FaceIter f, const Bvh& bvh, const int iterations)
 void Mesh::computeNormalizedSDFValues()
 {
     Bvh bvh(this);
-    double minSDF = INFINITY;
-    double maxSDF = -INFINITY;
     
     // compute sdf as weighted average of cone rays for each face
     for (FaceIter f = faces.begin(); f != faces.end(); f++) {
@@ -132,53 +134,67 @@ void Mesh::computeNormalizedSDFValues()
 
 void Mesh::segment(const int clusters)
 {
-    // k means clustering
+    // fuzzy c means clustering
+    double fuzziness = 3.0;
+    double p = 2.0 / (fuzziness - 1.0);
+    double maxDiff;
+    double degree[(int)faces.size()][clusters];
+    std::vector<double> centroids(clusters);
     
-    // assign random centroids
-    std::vector<double> centroids;
-    for (int i = 0; i < clusters; i++) {
-        int index = rand() % faces.size();
-        while (std::find(centroids.begin(), centroids.end(), faces[index].sdf) != centroids.end()) {
-            index = rand() % faces.size();
+    // initialize membership degrees
+    for (FaceCIter f = faces.begin(); f != faces.end(); f++) {
+        Eigen::VectorXd random = Eigen::VectorXd::Random(clusters).normalized();
+        for (int i = 0; i < clusters; i++) {
+            degree[f->index][i] = random[i];
         }
-        centroids.push_back(faces[index].sdf);
     }
     
-    while (true) {
-        // assign closest cluster to face
-        for (FaceIter f = faces.begin(); f != faces.end(); f++) {
-            double min = INFINITY;
-            for (int i = 0; i < clusters; i++) {
-                double distance = std::abs(f->sdf - centroids[i]);
-                if (distance < min) {
-                    min = distance;
-                    f->cluster = i;
-                }
-            }
-        }
-        
+    do {
         // update centroids
-        std::vector<double> newCentroids;
         for (int i = 0; i < clusters; i++) {
-            double sum = 0.0;
-            int count = 0;
+            double num = 0.0;
+            double den = 0.0;
             for (FaceCIter f = faces.begin(); f != faces.end(); f++) {
-                if (f->cluster == i) {
-                    sum += f->sdf;
-                    count ++;
-                }
+                double degreeM = pow(degree[f->index][i], fuzziness);
+                num += degreeM * f->sdf;
+                den += degreeM;
             }
-            newCentroids.push_back(sum / (double)count);
+            centroids[i] = num / den;
         }
         
-        // check for termination
-        double distance = 0.0;
+        // update degrees
+        maxDiff = -INFINITY;
         for (int i = 0; i < clusters; i++) {
-            distance += std::abs(newCentroids[i] - centroids[i]);
+            for (FaceCIter f = faces.begin(); f != faces.end(); f++) {
+                // calculate degree
+                double u = 0.0;
+                double num = pow(f->sdf - centroids[i], 2);
+                for (int j = 0; j < clusters; j++) {
+                    double r = num / pow(f->sdf - centroids[j], 2);
+                    u += pow(r, p);
+                }
+                u = 1.0 / u;
+                
+                // compute diff
+                double diff = u - degree[f->index][i];
+                if (maxDiff < diff) maxDiff = diff;
+                
+                // update
+                degree[f->index][i] = u;
+            }
         }
-        
-        if (distance == 0.0) break;
-        centroids = newCentroids;
+
+    } while (maxDiff > EPSILON);
+    
+    // set clusters
+    for (FaceIter f = faces.begin(); f != faces.end(); f++) {
+        double max = -INFINITY;
+        for (int i = 0; i < clusters; i++) {
+            if (max < degree[f->index][i]) {
+                max = degree[f->index][i];
+                f->cluster = i;
+            }
+        }
     }
 }
 
