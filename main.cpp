@@ -17,10 +17,10 @@ double x = 0;
 double y = 0;
 double z = -2.5;
 
-std::string path = "/Users/rohansawhney/Desktop/developer/C++/shape-segmentation/bunny1.obj";
+std::string path = "/Users/rohansawhney/Desktop/developer/C++/shape-segmentation/kitten.obj";
 Mesh mesh;
 bool success = true;
-int clusters = 4;
+int clusters = 3;
 std::vector<Eigen::Vector3d> colors;
 
 void printInstructions()
@@ -56,9 +56,6 @@ void init()
 
 void draw()
 {
-    glLineWidth(1.0);
-    glBegin(GL_LINES);
-    
     for (FaceCIter f = mesh.faces.begin(); f != mesh.faces.end(); f++) {
         
         if (f->isBoundary()) continue;
@@ -124,8 +121,8 @@ void keyboard(unsigned char key, int x0, int y0)
             break;
         case ' ':
             if (success) {
-                generateClusterColors();
                 mesh.segment(clusters);
+                generateClusterColors();
             }
             break;
     }
@@ -160,8 +157,8 @@ int main(int argc, char** argv) {
     
     success = mesh.read(path);
     if (success) {
-        generateClusterColors();
         mesh.segment(clusters);
+        generateClusterColors();
     }
     
     printInstructions();

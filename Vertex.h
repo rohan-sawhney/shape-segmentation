@@ -13,7 +13,7 @@ public:
         
     // id between 0 and |V|-1
     int index;
-    
+
     // checks if vertex is contained in any edge or face
     bool isIsolated() const;
 };

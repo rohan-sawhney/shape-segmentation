@@ -93,28 +93,31 @@ double weightedAverage(std::vector<std::pair<double, double>>& coneDistancesAndW
     return 0.0;
 }
 
+void computeSDFValues(FaceIter f, const Bvh& bvh, const int iterations)
+{
+    Eigen::Vector3d direction;
+    Eigen::Vector3d centroid = f->centroid();
+    Eigen::Vector3d normal = -f->normal().normalized();
+    
+    std::vector<std::pair<double, double>> coneDistancesAndWeights;
+    for (int i = 0; i < iterations; i++) {
+        double coneAngle = randomDirectionInCone(direction, normal);
+        double d = bvh.distance(centroid, direction);
+        if (d != INFINITY) coneDistancesAndWeights.push_back(std::make_pair(d, coneAngle));
+    }
+    
+    f->sdf = weightedAverage(coneDistancesAndWeights);
+}
+
 void Mesh::computeNormalizedSDFValues()
 {
     Bvh bvh(this);
     double minSDF = INFINITY;
     double maxSDF = -INFINITY;
-    Eigen::Vector3d direction;
-    const int iterations = 30;
     
     // compute sdf as weighted average of cone rays for each face
     for (FaceIter f = faces.begin(); f != faces.end(); f++) {
-        
-        Eigen::Vector3d centroid = f->centroid();
-        Eigen::Vector3d normal = -f->normal().normalized();
-        
-        std::vector<std::pair<double, double>> coneDistancesAndWeights;
-        for (int i = 0; i < iterations; i++) {
-            double coneAngle = randomDirectionInCone(direction, normal);
-            double d = bvh.distance(centroid, direction);
-            if (d != INFINITY) coneDistancesAndWeights.push_back(std::make_pair(d, coneAngle));
-        }
-        
-        f->sdf = weightedAverage(coneDistancesAndWeights);
+        computeSDFValues(f, bvh, 30);
         if (f->sdf < minSDF) minSDF = f->sdf;
         if (f->sdf > maxSDF) maxSDF = f->sdf;
     }
@@ -127,11 +130,13 @@ void Mesh::computeNormalizedSDFValues()
     }
 }
 
-void Mesh::cluster(const int k)
+void Mesh::segment(const int clusters)
 {
-    // choose random centroids
+    // k means clustering
+    
+    // assign random centroids
     std::vector<double> centroids;
-    for (int i = 0; i < k; i++) {
+    for (int i = 0; i < clusters; i++) {
         int index = rand() % faces.size();
         while (std::find(centroids.begin(), centroids.end(), faces[index].sdf) != centroids.end()) {
             index = rand() % faces.size();
@@ -143,7 +148,7 @@ void Mesh::cluster(const int k)
         // assign closest cluster to face
         for (FaceIter f = faces.begin(); f != faces.end(); f++) {
             double min = INFINITY;
-            for (int i = 0; i < k; i++) {
+            for (int i = 0; i < clusters; i++) {
                 double distance = std::abs(f->sdf - centroids[i]);
                 if (distance < min) {
                     min = distance;
@@ -154,7 +159,7 @@ void Mesh::cluster(const int k)
         
         // update centroids
         std::vector<double> newCentroids;
-        for (int i = 0; i < k; i++) {
+        for (int i = 0; i < clusters; i++) {
             double sum = 0.0;
             int count = 0;
             for (FaceCIter f = faces.begin(); f != faces.end(); f++) {
@@ -168,21 +173,13 @@ void Mesh::cluster(const int k)
         
         // check for termination
         double distance = 0.0;
-        for (int i = 0; i < k; i++) {
+        for (int i = 0; i < clusters; i++) {
             distance += std::abs(newCentroids[i] - centroids[i]);
         }
         
         if (distance == 0.0) break;
         centroids = newCentroids;
     }
-}
-
-void Mesh::segment(const int k)
-{
-    // soft clustering
-    cluster(k);
-    
-    // k graph cut
 }
 
 void Mesh::normalize()

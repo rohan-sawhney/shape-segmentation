@@ -6,7 +6,6 @@
 #include "Edge.h"
 #include "Face.h"
 #include "HalfEdge.h"
-#include <unordered_map>
 
 class Mesh {
 public:
@@ -20,7 +19,7 @@ public:
     bool write(const std::string& fileName) const;
     
     // segments shape using the shape diameter function
-    void segment(const int k);
+    void segment(const int clusters);
             
     // member variables
     std::vector<HalfEdge> halfEdges;
@@ -37,9 +36,6 @@ private:
     
     // computes normalized sdf for each face
     void computeNormalizedSDFValues();
-    
-    // assigns faces to clusters based on sdf values
-    void cluster(const int k);
 };
 
 #endif

@@ -2,6 +2,7 @@
 #define FACE_H
 
 #include "Types.h"
+#include <vector>
 class BoundingBox;
 
 class Face {
@@ -17,7 +18,7 @@ public:
     
     // cluster
     int cluster;
-        
+    
     // checks if this face lies on boundary
     bool isBoundary() const;
     
