@@ -82,16 +82,17 @@ double weightedAverage(std::vector<std::pair<double, double>>& coneDistancesAndW
         sd = sqrt(sd/(double)l);
         
         // compute weighted average
-        double sum = 0;
-        int count = 0;
+        double sum = 0.0;
+        double weight = 0.0;
         for (int i = 0; i < l; i++) {
             if (std::abs(coneDistancesAndWeights[i].first-median) < sd) {
-                sum += coneDistancesAndWeights[i].first / coneDistancesAndWeights[i].second;
-                count ++;
+                double inv = 1.0 / coneDistancesAndWeights[i].second;
+                sum += coneDistancesAndWeights[i].first * inv;
+                weight += inv;
             }
         }
         
-        return sum / (double)count;
+        return sum / weight;
     }
     
     return 0.0;
